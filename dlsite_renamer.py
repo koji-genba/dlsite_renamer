@@ -404,12 +404,12 @@ def generate_renaming_plan(base_dir: Path,
             suffix_match = re.search(r'(\.part\d+)$', old_path.name, re.IGNORECASE)
             suffix = suffix_match.group(1) if suffix_match else None
 
-            # Generate new name
-            # Only add suffix if we should keep it AND a suffix exists
+            # Generate new name with RJ number prefix
+            # Format: RJ番号_タイトル or RJ番号_タイトル.partN
             if suffix and keep_suffix:
-                new_name = f"{sanitized_title}{suffix}"
+                new_name = f"{rj_number}_{sanitized_title}{suffix}"
             else:
-                new_name = sanitized_title
+                new_name = f"{rj_number}_{sanitized_title}"
 
             new_path = old_path.parent / new_name
 
