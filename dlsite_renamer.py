@@ -27,7 +27,6 @@ class Config:
     """Configuration constants"""
     MAX_FILENAME_LENGTH = 200
     LOG_DIR = 'logs'
-    DEFAULT_CSV = 'dlsite_purchases_20260118_204640.csv'
 
     # Character replacements (full-width equivalents)
     CHAR_REPLACEMENTS = {
@@ -335,7 +334,8 @@ def generate_renaming_plan(base_dir: Path,
                           renaming_map: Dict[str, Tuple[str, Optional[str]]],
                           max_length: int = Config.MAX_FILENAME_LENGTH,
                           remove_suffix: bool = False,
-                          update_mtime: bool = False) -> List[Tuple[Path, Path, Optional[float]]]:
+                          update_mtime: bool = False,
+                          include_renamed: bool = False) -> List[Tuple[Path, Path, Optional[float]]]:
     """
     Generate complete renaming plan
 
@@ -344,7 +344,8 @@ def generate_renaming_plan(base_dir: Path,
         renaming_map: Dictionary of rj_number -> (title, purchase_date)
         max_length: Maximum filename length
         remove_suffix: If True, remove .partN suffix when only one folder exists for an RJ number
-        update_mtime: If True, also find already-renamed folders for mtime update
+        update_mtime: If True, update modification time to purchase date
+        include_renamed: If True, also find already-renamed folders for renaming
 
     Returns:
         List of (old_path, new_path, timestamp) tuples
@@ -381,9 +382,9 @@ def generate_renaming_plan(base_dir: Path,
         # Find matching folders (by RJ number) - using cache
         matching_folders = find_matching_folders_from_cache(folder_cache, rj_number)
 
-        if not matching_folders and update_mtime:
-            # If update_mtime is enabled, also search for already-renamed folders
-            # This allows updating mtime on folders that have already been renamed
+        if not matching_folders and include_renamed:
+            # If include_renamed is enabled, also search for already-renamed folders
+            # This allows renaming/updating folders that have already been renamed
             matching_folders = find_folders_by_title_from_cache(folder_cache, sanitized_title)
 
         if not matching_folders:
@@ -704,6 +705,11 @@ Examples:
         action='store_true',
         help='Remove .partN suffix when only one folder exists for an RJ number (prevents conflicts)'
     )
+    parser.add_argument(
+        '--include-renamed',
+        action='store_true',
+        help='Also process already-renamed folders (folders with title names instead of RJ numbers)'
+    )
 
     args = parser.parse_args()
 
@@ -746,8 +752,10 @@ Examples:
     if args.remove_suffix:
         logger.info("Suffix removal enabled: .partN will be removed when safe (only one folder per RJ number)")
     if args.update_mtime:
-        logger.info("Mtime update mode: Will also search for already-renamed folders to update their dates")
-    plan = generate_renaming_plan(args.directory, renaming_map, args.max_length, args.remove_suffix, args.update_mtime)
+        logger.info("Mtime update enabled: Modification times will be updated to purchase dates")
+    if args.include_renamed:
+        logger.info("Include renamed mode: Will also search for already-renamed folders to process")
+    plan = generate_renaming_plan(args.directory, renaming_map, args.max_length, args.remove_suffix, args.update_mtime, args.include_renamed)
     logger.info(f"Generated plan with {len(plan)} operations")
 
     if not plan:

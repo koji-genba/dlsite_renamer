@@ -69,6 +69,9 @@ python3 dlsite_renamer.py /path/to/dlsite/folders
   --remove-suffix        フォルダが1つだけの場合は.partNサフィックスを除去
                          (重複回避のため複数ある場合は保持)
 
+  --include-renamed      既にリネーム済みのフォルダも処理対象に含める
+                         (タイトル名のフォルダも検索・リネーム)
+
   -h, --help             ヘルプメッセージを表示
 ```
 
@@ -148,6 +151,24 @@ python3 dlsite_renamer.py /mnt/nas/dlsite --remove-suffix
 
 - `RJ243414.part1`（これだけ） → `タイトル`
 - `RJ243448.part1` + `RJ243448.part2`（両方ある） → `タイトル.part1` + `タイトル.part2`
+
+#### 例8: 既にリネーム済みのフォルダも処理
+
+```bash
+python3 dlsite_renamer.py /mnt/nas/dlsite --include-renamed
+```
+
+RJ番号のフォルダだけでなく、既にタイトル名にリネーム済みのフォルダも処理対象に含めます。以下のような用途に便利です：
+
+- CSVのタイトルが更新された場合の再リネーム
+- サニタイズ規則が変更された場合の再処理
+- 過去にリネームしたフォルダの統一
+
+**組み合わせ例：**
+```bash
+# リネーム済みフォルダも含めて、すべての更新日時を設定
+python3 dlsite_renamer.py /mnt/nas/dlsite --include-renamed --update-mtime
+```
 
 ## CSVファイル形式
 
@@ -240,20 +261,29 @@ python3 dlsite_renamer.py /mnt/nas/dlsite --update-mtime --yes
 - 既存の更新日時は上書きされます
 - ドライランモードでは実際の更新は行われません
 
-### すでにリネーム済みのフォルダの更新日時設定
+### 既にリネーム済みのフォルダの処理
 
-`--update-mtime`オプションを使用すると、**すでに作品名にリネームされているフォルダ**に対しても、更新日時だけを設定できます：
+`--include-renamed`オプションを使用すると、**既に作品名にリネームされているフォルダ**も処理対象に含めることができます：
 
 ```bash
-# すでにリネーム済みのフォルダの日付も更新
-python3 dlsite_renamer.py /mnt/nas/dlsite --update-mtime --yes
+# 既にリネーム済みのフォルダも処理
+python3 dlsite_renamer.py /mnt/nas/dlsite --include-renamed --yes
 ```
 
 **動作:**
-1. RJ番号のフォルダを検索 → リネーム + mtime更新
-2. RJ番号が見つからない場合、作品名のフォルダを検索 → mtimeのみ更新
+1. RJ番号のフォルダを検索 → リネーム
+2. RJ番号が見つからない場合、作品名のフォルダを検索 → リネーム（または変更なし）
 
-これにより、過去にリネームしたフォルダに対しても、後から購入日時を設定できます。
+**オプションの組み合わせ:**
+
+| オプション | 処理対象 | 動作 |
+|-----------|---------|------|
+| なし | RJ番号フォルダのみ | リネームのみ |
+| `--update-mtime` | RJ番号フォルダのみ | リネーム + mtime更新 |
+| `--include-renamed` | RJ + リネーム済み | すべてリネーム |
+| `--include-renamed --update-mtime` | RJ + リネーム済み | すべてリネーム + mtime更新 |
+
+これにより、過去にリネームしたフォルダに対しても、後から購入日時を設定したり、タイトルを更新したりできます。
 
 ## ログファイル
 
