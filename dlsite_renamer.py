@@ -254,6 +254,30 @@ def find_matching_folders(base_dir: Path, rj_number: str) -> List[Path]:
     return sorted(matching_folders)  # Sort for consistent ordering
 
 
+def find_matching_folders_from_cache(folder_cache: Dict[str, Path], rj_number: str) -> List[Path]:
+    """
+    Find folders matching rj_number or rj_number.partN pattern from cached folder list
+
+    Args:
+        folder_cache: Dictionary mapping folder names to Path objects
+        rj_number: RJ number to match
+
+    Returns:
+        List of matching folder paths
+    """
+    matching_folders = []
+
+    # Pattern: exact match or with .partN suffix
+    # Example: RJ243414 or RJ243414.part1, RJ243414.part2
+    pattern = re.compile(rf'^{re.escape(rj_number)}(\.part\d+)?$', re.IGNORECASE)
+
+    for folder_name, folder_path in folder_cache.items():
+        if pattern.match(folder_name):
+            matching_folders.append(folder_path)
+
+    return sorted(matching_folders)  # Sort for consistent ordering
+
+
 def find_folders_by_title(base_dir: Path, sanitized_title: str) -> List[Path]:
     """
     Find folders matching sanitized title or title.partN pattern
@@ -283,6 +307,30 @@ def find_folders_by_title(base_dir: Path, sanitized_title: str) -> List[Path]:
     return sorted(matching_folders)  # Sort for consistent ordering
 
 
+def find_folders_by_title_from_cache(folder_cache: Dict[str, Path], sanitized_title: str) -> List[Path]:
+    """
+    Find folders matching sanitized title or title.partN pattern from cached folder list
+
+    Args:
+        folder_cache: Dictionary mapping folder names to Path objects
+        sanitized_title: Sanitized title to match
+
+    Returns:
+        List of matching folder paths
+    """
+    matching_folders = []
+
+    # Pattern: exact match or with .partN suffix
+    # Example: タイトル or タイトル.part1, タイトル.part2
+    pattern = re.compile(rf'^{re.escape(sanitized_title)}(\.part\d+)?$', re.IGNORECASE)
+
+    for folder_name, folder_path in folder_cache.items():
+        if pattern.match(folder_name):
+            matching_folders.append(folder_path)
+
+    return sorted(matching_folders)  # Sort for consistent ordering
+
+
 def generate_renaming_plan(base_dir: Path,
                           renaming_map: Dict[str, Tuple[str, Optional[str]]],
                           max_length: int = Config.MAX_FILENAME_LENGTH,
@@ -305,6 +353,19 @@ def generate_renaming_plan(base_dir: Path,
     not_found = []
     sanitization_errors = []
 
+    # OPTIMIZATION: Scan directory once and cache all folder names
+    # This eliminates redundant directory scans for each RJ number
+    logger.debug("Building folder cache...")
+    folder_cache = {}
+    if base_dir.exists():
+        for item in base_dir.iterdir():
+            if item.is_dir():
+                folder_cache[item.name] = item
+    else:
+        logger.error(f"Base directory does not exist: {base_dir}")
+        return []
+    logger.debug(f"Cached {len(folder_cache)} folders")
+
     for rj_number, (title, purchase_date) in renaming_map.items():
         # Sanitize title
         try:
@@ -317,13 +378,13 @@ def generate_renaming_plan(base_dir: Path,
         # Parse purchase date
         timestamp = parse_purchase_date(purchase_date) if purchase_date else None
 
-        # Find matching folders (by RJ number)
-        matching_folders = find_matching_folders(base_dir, rj_number)
+        # Find matching folders (by RJ number) - using cache
+        matching_folders = find_matching_folders_from_cache(folder_cache, rj_number)
 
         if not matching_folders and update_mtime:
             # If update_mtime is enabled, also search for already-renamed folders
             # This allows updating mtime on folders that have already been renamed
-            matching_folders = find_folders_by_title(base_dir, sanitized_title)
+            matching_folders = find_folders_by_title_from_cache(folder_cache, sanitized_title)
 
         if not matching_folders:
             not_found.append(rj_number)
