@@ -27,6 +27,7 @@ class Config:
     """Configuration constants"""
     MAX_FILENAME_LENGTH = 200
     LOG_DIR = 'logs'
+    DEFAULT_CSV = 'dlsite_purchases.csv'
 
     # Character replacements (full-width equivalents)
     CHAR_REPLACEMENTS = {
